@@ -2,17 +2,17 @@
   "n_obs": 10125,
   "effects": {
     "light rain": {
-      "effect": -0.187,
-      "ci_low": -0.239,
-      "ci_high": -0.134,
-      "p": 3.46e-12,
+      "effect": -0.178,
+      "ci_low": -0.231,
+      "ci_high": -0.125,
+      "p": 4.12e-11,
       "n_hours": 733
     },
     "heavy rain": {
-      "effect": -0.179,
-      "ci_low": -0.254,
-      "ci_high": -0.104,
-      "p": 2.58e-06,
+      "effect": -0.193,
+      "ci_low": -0.269,
+      "ci_high": -0.117,
+      "p": 6.74e-07,
       "n_hours": 362
     }
   },
@@ -33,21 +33,21 @@
       "dry_mean": 1.29,
       "pct": -17.8
     },
-    "Buses and trucks": {
-      "effect": -0.099,
-      "ci_low": -0.183,
-      "ci_high": -0.016,
-      "p": 0.0192,
-      "dry_mean": 1.4,
-      "pct": -7.1
+    "Buses": {
+      "effect": 0.002,
+      "ci_low": -0.03,
+      "ci_high": 0.034,
+      "p": 0.904,
+      "dry_mean": 0.32,
+      "pct": 0.6
     },
     "Cars": {
-      "effect": -0.043,
-      "ci_low": -0.225,
-      "ci_high": 0.139,
-      "p": 0.645,
-      "dry_mean": 5.46,
-      "pct": -0.8
+      "effect": -0.144,
+      "ci_low": -0.352,
+      "ci_high": 0.064,
+      "p": 0.175,
+      "dry_mean": 6.53,
+      "pct": -2.2
     }
   },
   "strict_n_obs": 7445,
@@ -73,21 +73,21 @@
         "hour_after_pct": -13.6,
         "hour_after_p": 0.0165
       },
-      "Buses and trucks": {
-        "light_rain_pct": -5.5,
-        "light_rain_p": 0.098,
-        "heavy_rain_pct": -10.4,
-        "heavy_rain_p": 0.0103,
-        "hour_after_pct": -0.9,
-        "hour_after_p": 0.828
+      "Buses": {
+        "light_rain_pct": 3.5,
+        "light_rain_p": 0.545,
+        "heavy_rain_pct": -5.3,
+        "heavy_rain_p": 0.397,
+        "hour_after_pct": 6.0,
+        "hour_after_p": 0.454
       },
       "Cars": {
-        "light_rain_pct": 1.4,
-        "light_rain_p": 0.489,
-        "heavy_rain_pct": -5.3,
-        "heavy_rain_p": 0.0227,
-        "hour_after_pct": -3.7,
-        "hour_after_p": 0.148
+        "light_rain_pct": -0.2,
+        "light_rain_p": 0.939,
+        "heavy_rain_pct": -6.4,
+        "heavy_rain_p": 0.00242,
+        "hour_after_pct": -3.6,
+        "hour_after_p": 0.152
       }
     }
   }

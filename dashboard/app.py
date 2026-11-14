@@ -53,7 +53,7 @@ with tab_insight:
     st.caption("Findings for the whole week. They do not change with the filters.")
     light = hourly[hourly.hour_of_day.between(7, 17)]
 
-    st.subheader("1. Rain takes motorcycles and pedestrians off the road; cars stay")
+    st.subheader("1. Rain takes motorcycles off the road; cars stay")
     strict = pd.DataFrame(effect["strict"]).T.reset_index(names="road user")
     strict["change in rain"] = strict.pct.map("{:+.0f}%".format)
     strict["clear effect?"] = strict.p.map(lambda p: "yes" if p < 0.05 else "no")
@@ -76,6 +76,11 @@ with tab_insight:
         "heavy_rain": f"heavy rain, 2.5+ mm/h ({checks['n_heavy']} h)",
         "hour_after": f"dry hour after rain ({checks['n_hour_after']} h)"}), hide_index=True)
 
+    st.markdown("**What the hand count adds.** YOLO finds only about 1 motorcycle in 9, and fewer still in rain, so "
+                "the size of the motorcycle drop is overstated. The direction holds in our own count: 4.7 motorcycles "
+                "per image in dry daylight (40 images) against 2.8 in rain (24 images). The same count shows no drop "
+                "in people (0.53 against 0.50), so the pedestrian result is not confirmed.")
+
     st.subheader("2. Weekends are quieter, Sunday most of all")
     by_day = light.groupby("weekday").pcu.mean().reindex(
         ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Monday"])
@@ -95,18 +100,23 @@ with tab_insight:
     right.dataframe(cams.nlargest(5, "mean_pcu")[["name", "road_class", "mean_pcu"]].round(1)
                     .rename(columns={"name": "busiest cameras", "mean_pcu": "vehicles in view"}), hide_index=True)
 
-    st.caption("Primary, secondary and tertiary roads all show about 9 vehicles in view. Motorcycle share is the "
+    st.caption("Primary, secondary and tertiary roads all show about 7.5 vehicles in view. Motorcycle share is the "
                "difference: about 4% on primary roads against 14% on secondary roads.")
 
     st.subheader("Limits")
     st.markdown("""
 - One week of images (25–31 Aug 2026) with one weekend; almost all rain fell on Sat 29 – Mon 31 Aug.
 - A photo counts vehicles in view, not speed, so a jam and free-flowing traffic can look alike.
-- YOLO11m misses distant vehicles, more so at night and in heavy rain, so part of the heavy-rain drop may be missed detections.
-- Truck counts are the least reliable: pickups and some fixed objects are counted as trucks, and trucks weigh 2.5 in the vehicles-in-view score.
+- YOLO11m undercounts. Against our hand count of 98 images it found about 60% of the cars and 11% of the motorcycles: distant, blurry vehicles are missed, more so at night and in rain.
+- The vehicles-in-view score is therefore too low in level (about 60% of the hand count by day, 45% at night), but it ranks images well (correlation 0.85), so it is used for comparisons only.
+- YOLO labels pickups and vans as trucks (116 reported, 16 real), so its "truck" class is counted as a car.
 - Road type is the nearest street-level road in OpenStreetMap; expressways passing overhead are ignored.
 - Air quality and non-rain weather come from coarse model grids and are not used for conclusions.
 """)
+    st.markdown("**Hand count against YOLO** (98 images: dry day, rain, night, and images where YOLO saw many trucks)")
+    left, right = st.columns(2)
+    left.dataframe(pd.read_csv(EXPORT / "hand_count_by_class.csv"), hide_index=True)
+    right.dataframe(pd.read_csv(EXPORT / "hand_count_by_stratum.csv"), hide_index=True)
 
 with tab_map:
     per_cam = sel.groupby("camera_id", as_index=False).agg(congestion=("congestion_z", "mean"), pcu=("pcu", "mean"))
@@ -127,8 +137,8 @@ with tab_time:
     heat = sel.pivot_table(index="weekday", columns="hour_of_day", values="congestion_z").reindex(order).dropna(how="all")
     st.plotly_chart(px.imshow(heat, color_continuous_scale="RdYlGn_r", aspect="auto", zmin=-1, zmax=1,
                               title="Congestion by weekday and hour"), width="stretch")
-    mix = sel.groupby("hour_of_day")[["n_car", "n_motorcycle", "n_heavy", "n_person"]].mean().reset_index()
-    st.plotly_chart(px.line(mix, x="hour_of_day", y=["n_car", "n_motorcycle", "n_heavy", "n_person"],
+    mix = sel.groupby("hour_of_day")[["n_car", "n_motorcycle", "n_bus", "n_person"]].mean().reset_index()
+    st.plotly_chart(px.line(mix, x="hour_of_day", y=["n_car", "n_motorcycle", "n_bus", "n_person"],
                             title="Average count per image by hour"), width="stretch")
 
 with tab_rain:

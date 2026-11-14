@@ -1,0 +1,5 @@
+stratum,images,pcu_hand,pcu_yolo,yolo_per_hand
+dry day,40,13.78,8.22,0.6
+many trucks,15,17.06,10.54,0.62
+night,19,8.94,4.0,0.45
+rain day,24,11.83,6.06,0.51

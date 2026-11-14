@@ -33,7 +33,7 @@ uv run streamlit run dashboard/app.py     # only needs export/, no images
 ```
 
 ## Definitions
-- **PCU** (vehicles in view) = 0.33 × motorcycles + cars + 2.5 × (buses + trucks).
+- **PCU** (vehicles in view) = 0.33 × motorcycles + cars + 2.5 × buses. YOLO's "truck" class is counted as a car: the hand count (`analysis/hand_count.py`) found 16 real trucks in 98 images where YOLO reported 116, mostly pickups and vans.
 - **Congestion** = PCU as a z-score within each camera, because camera angles differ.
 - **Congestion at night** (after 18:30) is scored against the camera's own night level, because YOLO sees fewer vehicles in the dark.
 

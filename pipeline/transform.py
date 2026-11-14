@@ -27,8 +27,9 @@ WITH obs AS (
            coalesce(i.change_from_prev < 1, false) AND i.contrast >= 10 AS is_frozen,
            i.ts::TIME >= TIME '18:30:00' AS is_night,
            y.n_person, y.n_bicycle, y.n_car, y.n_motorcycle, y.n_bus, y.n_truck, y.mean_conf,
-           -- passenger-car units: motorcycle 0.33, car 1, bus/truck 2.5
-           0.33 * y.n_motorcycle + y.n_car + 2.5 * (y.n_bus + y.n_truck) AS pcu
+           -- passenger-car units: motorcycle 0.33, car 1, bus 2.5. YOLO's "truck" is weighted as a car:
+           -- the hand count found 16 real trucks where YOLO reported 116 (mostly pickups and vans).
+           0.33 * y.n_motorcycle + y.n_car + y.n_truck + 2.5 * y.n_bus AS pcu
     FROM lake.bronze.image_index i
     JOIN lake.bronze.yolo_counts y USING (path)
 ), flagged AS (
@@ -66,7 +67,7 @@ WHERE s.rain_id IN (SELECT rain_id FROM lake.silver.gauge_hour)
 QUALIFY row_number() OVER (PARTITION BY c.camera_id ORDER BY gauge_km) = 1;
 """
 
-METRICS = ("pcu", "congestion_z", "n_car", "n_motorcycle", "n_heavy", "n_person")
+METRICS = ("pcu", "congestion_z", "n_car", "n_motorcycle", "n_bus", "n_person")
 
 GOLD_HOUR = f"""
 CREATE OR REPLACE TABLE lake.gold.camera_hour AS
@@ -76,9 +77,9 @@ WITH agg AS (
            count(*) FILTER (usable) AS n_valid,
            avg(pcu) FILTER (usable) AS pcu,
            avg(congestion_z) AS congestion_z,
-           avg(n_car) FILTER (usable) AS n_car,
+           avg(n_car + n_truck) FILTER (usable) AS n_car,  -- cars include YOLO's "truck" (pickups, vans)
            avg(n_motorcycle) FILTER (usable) AS n_motorcycle,
-           avg(n_bus + n_truck) FILTER (usable) AS n_heavy,
+           avg(n_bus) FILTER (usable) AS n_bus,
            avg(n_person) FILTER (usable) AS n_person,
            avg(brightness) AS brightness, avg(sharpness) AS sharpness, avg(glare) AS glare
     FROM lake.silver.observations

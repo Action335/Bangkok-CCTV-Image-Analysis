@@ -18,7 +18,7 @@ from sklearn.metrics import silhouette_score
 from pipeline.config import EXPORT
 
 ROAD_USERS = {"n_motorcycle": "Motorcycles", "n_person": "People",
-              "n_heavy": "Buses and trucks", "n_car": "Cars"}
+              "n_bus": "Buses", "n_car": "Cars"}
 
 
 def cluster_cameras(hourly: pd.DataFrame) -> pd.DataFrame:
