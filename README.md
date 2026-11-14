@@ -2,6 +2,8 @@
 
 **Question:** where and when does Bangkok traffic get congested, and how much does rain add?
 
+**Live dashboard:** https://bangkok-cctv-image-analysis-3ljqcfiugtcowj7c877sgm.streamlit.app/
+
 Data: 61,319 images from 100 BMA traffic cameras, every 10 min, 06:00–21:00, 25–31 Aug 2026.
 
 ## Pipeline
