@@ -18,10 +18,11 @@ def load():
     cams = pd.read_parquet(EXPORT / "cameras.parquet").merge(
         pd.read_parquet(EXPORT / "camera_clusters.parquet"), on="camera_id", how="left")
     hourly["date"] = hourly.hour.dt.date
-    return hourly, cams, json.loads((EXPORT / "rain_effect.json").read_text())
+    return (hourly, cams, json.loads((EXPORT / "rain_effect.json").read_text()),
+            pd.read_parquet(EXPORT / "quality_report.parquet"))
 
 
-hourly, cams, effect = load()
+hourly, cams, effect, quality = load()
 
 st.title("Bangkok CCTV Traffic: where, when, and what rain does")
 st.caption("100 BMA cameras, 25–31 Aug 2026, one image every 10 min (06:00–21:00). Vehicles counted with "
@@ -45,8 +46,51 @@ c2.metric("Avg vehicles in view (PCU)", f"{sel.pcu.mean():.1f}")
 c3.metric("Rainy share of hours", f"{(sel.rain_level != 'dry').mean():.0%}")
 c4.metric("Avg PM2.5 (µg/m³)", f"{sel.pm2_5.mean():.1f}")
 
-tab_map, tab_time, tab_rain, tab_cam, tab_quality = st.tabs(
-    ["Map", "Time patterns", "Rain & camera groups", "One camera", "Data quality"])
+tab_insight, tab_map, tab_time, tab_rain, tab_cam, tab_quality = st.tabs(
+    ["Insights", "Map", "Time patterns", "Rain & camera groups", "One camera", "Data quality"])
+
+with tab_insight:
+    st.caption("Findings for the whole week. They do not change with the filters.")
+    light = hourly[hourly.hour_of_day.between(7, 17)]
+
+    st.subheader("1. Rain takes motorcycles and pedestrians off the road; cars stay")
+    strict = pd.DataFrame(effect["strict"]).T.reset_index(names="road user")
+    strict["change in rain"] = strict.pct.map("{:+.0f}%".format)
+    strict["clear effect?"] = strict.p.map(lambda p: "yes" if p < 0.05 else "no")
+    left, right = st.columns([3, 2])
+    left.plotly_chart(px.bar(strict, x="road user", y="pct", error_y=100 * (strict.ci_high - strict.effect) / strict.dry_mean,
+                             error_y_minus=100 * (strict.effect - strict.ci_low) / strict.dry_mean,
+                             labels={"pct": "% change in count per image when raining"}), width="stretch")
+    right.dataframe(strict[["road user", "dry_mean", "effect", "change in rain", "p", "clear effect?"]], hide_index=True)
+    right.caption(f"Rainy vs dry hours on the same day, daylight only (07–17), {effect['strict_rainy_hours']:,} rainy "
+                  f"camera-hours out of {effect['strict_n_obs']:,}. Rain = nearest BMA gauge ≥ 0.5 mm in the hour.")
+
+    st.subheader("2. Weekends are quieter, Sunday most of all")
+    by_day = light.groupby("weekday").pcu.mean().reindex(
+        ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Monday"])
+    wk, we = light[~light.is_weekend].pcu.mean(), light[light.is_weekend].pcu.mean()
+    left, right = st.columns([3, 2])
+    left.plotly_chart(px.bar(by_day.reset_index(), x="weekday", y="pcu",
+                             labels={"pcu": "vehicles in view (PCU), daylight"}), width="stretch")
+    right.metric("Weekday vs weekend (daylight)", f"{wk:.1f} vs {we:.1f}", f"{100 * (we - wk) / wk:.0f}% on weekends")
+    right.caption("One weekend only, so treat this as suggestive.")
+
+    st.subheader("3. Motorways and primary roads carry the most traffic; secondary roads have twice the motorcycle share")
+    roads = cams.groupby("road_class", as_index=False).agg(
+        cameras=("camera_id", "size"), vehicles_in_view=("mean_pcu", "mean"),
+        motorcycle_share=("mean_motorcycle_share", "mean")).sort_values("vehicles_in_view", ascending=False)
+    left, right = st.columns(2)
+    left.dataframe(roads.round(2), hide_index=True)
+    right.dataframe(cams.nlargest(5, "mean_pcu")[["name", "road_class", "mean_pcu"]].round(1)
+                    .rename(columns={"name": "busiest cameras", "mean_pcu": "vehicles in view"}), hide_index=True)
+
+    st.subheader("Limits")
+    st.markdown("""
+- One week of images (25–31 Aug 2026) with one weekend; almost all rain fell on Sat 29 – Mon 31 Aug.
+- A photo counts vehicles in view, not speed, so a jam and free-flowing traffic can look alike.
+- YOLO11m misses distant vehicles, more so at night and in heavy rain, so part of the rain drop may be missed detections.
+- Air quality and non-rain weather come from coarse model grids and are not used for conclusions.
+""")
 
 with tab_map:
     per_cam = sel.groupby("camera_id", as_index=False).agg(congestion=("congestion_z", "mean"), pcu=("pcu", "mean"))
@@ -78,7 +122,7 @@ with tab_rain:
                               category_orders={"rain_level": RAIN_ORDER}, title="Congestion by hour: dry vs rain"),
                       width="stretch")
     eff = pd.DataFrame(effect["effects"]).T.reset_index(names="rain level")
-    left.markdown("**Rain effect on congestion (regression, whole week)** — change in z-score vs dry hours, "
+    left.markdown("**Rain effect on congestion (regression, whole week, all hours)** — change in z-score vs dry hours, "
                   "controlling for hour of day × weekend; 95% CI clustered by camera.")
     left.dataframe(eff, hide_index=True)
     prof = hourly.merge(cams[["camera_id", "cluster"]], on="camera_id").dropna(subset=["cluster"])
@@ -98,8 +142,11 @@ with tab_cam:
     st.plotly_chart(px.bar(one, x="hour", y="precipitation", title="Rain (mm/h)"), width="stretch")
 
 with tab_quality:
-    st.plotly_chart(px.bar(cams.sort_values("blank_share", ascending=False).head(20), x="name", y="blank_share",
-                           title="Share of blank / no-signal frames (worst 20 cameras)"), width="stretch")
+    st.markdown("**Cleaning rules and how many rows each one touches**")
+    st.dataframe(quality.drop(columns="step"), hide_index=True)
+    bad = cams.assign(unusable=cams.blank_share + cams.frozen_share).nlargest(20, "unusable")
+    st.plotly_chart(px.bar(bad, x="name", y=["blank_share", "frozen_share"],
+                           title="Share of blank and frozen frames (worst 20 cameras)"), width="stretch")
     cover = sel.groupby("hour", as_index=False).agg(images=("n_images", "sum"), valid=("n_valid", "sum"))
     st.plotly_chart(px.line(cover, x="hour", y=["images", "valid"], title="Images collected vs usable per hour"),
                     width="stretch")

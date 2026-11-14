@@ -25,10 +25,12 @@ def pixel_stats(raw: bytes) -> dict:
         img.load()
     except Exception:
         return {"corrupt": True}
-    g = np.asarray(img.convert("L"), dtype=np.float32)
+    grey = img.convert("L")
+    g = np.asarray(grey, dtype=np.float32)
     lower = g[g.shape[0] // 2:]
     return {
         "corrupt": False,
+        "thumb": np.asarray(grey.resize((32, 32)), dtype=np.float32),  # for the frozen-frame check
         "width": img.width,
         "height": img.height,
         "brightness": float(g.mean()),
@@ -61,6 +63,11 @@ def run() -> pd.DataFrame:
                 **pixel_stats(raw),
             })
     df = pd.DataFrame(rows).sort_values(["camera_id", "ts"]).reset_index(drop=True)
+    # mean pixel change from the same camera's previous frame; ~0 means the feed was frozen
+    thumbs = np.stack(df.pop("thumb"))
+    change = np.abs(thumbs[1:] - thumbs[:-1]).mean(axis=(1, 2))
+    same_cam = df.camera_id.values[1:] == df.camera_id.values[:-1]
+    df["change_from_prev"] = np.concatenate([[np.nan], np.where(same_cam, change, np.nan)])
     df.to_parquet(BRONZE / "image_index.parquet", index=False)
     return df
 

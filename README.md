@@ -35,7 +35,14 @@ uv run streamlit run dashboard/app.py     # only needs export/, no images
 ## Definitions
 - **PCU** (vehicles in view) = 0.33 × motorcycles + cars + 2.5 × (buses + trucks).
 - **Congestion** = PCU as a z-score within each camera, because camera angles differ.
-- **Blank frame** = pixel contrast < 10 (grey / no-signal). Flagged, not deleted.
+- **Congestion at night** (after 18:30) is scored against the camera's own night level, because YOLO sees fewer vehicles in the dark.
+
+## Cleaning rules
+Rows are flagged, never deleted; `export/quality_report.parquet` (and the dashboard's Data quality tab) shows how many rows each rule touches.
+- **Blank frame** = pixel contrast < 10 (grey / no-signal). Excluded from counts.
+- **Frozen frame** = identical to the same camera's previous frame (mean pixel change < 1 on a 32×32 thumbnail). Excluded from counts.
+- **Thin hour** = a camera-hour with fewer than 3 usable images. Its averages are left empty.
+- **Dead rain gauge** = a gauge that read zero all week. Not matched to any camera. Gauge-hours need at least 10 of 12 readings.
 - **Rain level** (nearest BMA gauge, median 0.85 km away) = dry < 0.5 mm/h, light < 2.5 mm/h, heavy ≥ 2.5 mm/h.
 
 See `TEAM_PLAN.md` for roles, milestones and the limits to state in the slides.

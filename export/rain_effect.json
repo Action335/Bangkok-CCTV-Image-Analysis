@@ -1,20 +1,55 @@
 {
-  "n_obs": 10659,
-  "r2": 0.373,
+  "n_obs": 10125,
   "effects": {
     "light rain": {
-      "coef": -0.12,
-      "ci_low": -0.177,
-      "ci_high": -0.063,
-      "p": 3.98e-05,
-      "n_hours": 729
+      "effect": -0.187,
+      "ci_low": -0.239,
+      "ci_high": -0.134,
+      "p": 3.46e-12,
+      "n_hours": 733
     },
     "heavy rain": {
-      "coef": -0.146,
-      "ci_low": -0.222,
-      "ci_high": -0.07,
-      "p": 0.000158,
-      "n_hours": 349
+      "effect": -0.179,
+      "ci_low": -0.254,
+      "ci_high": -0.104,
+      "p": 2.58e-06,
+      "n_hours": 362
     }
-  }
+  },
+  "strict": {
+    "Motorcycles": {
+      "effect": -0.235,
+      "ci_low": -0.304,
+      "ci_high": -0.165,
+      "p": 3.46e-11,
+      "dry_mean": 0.82,
+      "pct": -28.5
+    },
+    "People": {
+      "effect": -0.229,
+      "ci_low": -0.308,
+      "ci_high": -0.149,
+      "p": 1.68e-08,
+      "dry_mean": 1.29,
+      "pct": -17.8
+    },
+    "Buses and trucks": {
+      "effect": -0.099,
+      "ci_low": -0.183,
+      "ci_high": -0.016,
+      "p": 0.0192,
+      "dry_mean": 1.4,
+      "pct": -7.1
+    },
+    "Cars": {
+      "effect": -0.043,
+      "ci_low": -0.225,
+      "ci_high": 0.139,
+      "p": 0.645,
+      "dry_mean": 5.46,
+      "pct": -0.8
+    }
+  },
+  "strict_n_obs": 7445,
+  "strict_rainy_hours": 800
 }
