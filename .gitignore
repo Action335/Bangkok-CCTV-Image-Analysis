@@ -4,3 +4,8 @@ lake/
 __pycache__/
 *.pt
 .ipynb_checkpoints/
+
+# internal: team plan, presentation slides, course handout
+TEAM_PLAN.md
+slides/
+Project_Spec_*.pdf
