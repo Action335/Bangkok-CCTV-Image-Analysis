@@ -44,7 +44,7 @@ c1, c2, c3, c4 = st.columns(4)
 c1.metric("Camera-hours", f"{len(sel):,}")
 c2.metric("Avg vehicles in view (PCU)", f"{sel.pcu.mean():.1f}")
 c3.metric("Rainy share of hours", f"{(sel.rain_level != 'dry').mean():.0%}")
-c4.metric("Avg PM2.5 (µg/m³)", f"{sel.pm2_5.mean():.1f}")
+c4.metric("Avg PM2.5 (µg/m³, model grid)", f"{sel.pm2_5.mean():.1f}")
 
 tab_insight, tab_map, tab_time, tab_rain, tab_cam, tab_quality = st.tabs(
     ["Insights", "Map", "Time patterns", "Rain & camera groups", "One camera", "Data quality"])
@@ -56,18 +56,25 @@ with tab_insight:
     st.subheader("1. Rain takes motorcycles off the road; cars stay")
     strict = pd.DataFrame(effect["strict"]).T.reset_index(names="road user")
     strict["change in rain"] = strict.pct.map("{:+.0f}%".format)
-    strict["clear effect?"] = strict.p.map(lambda p: "yes" if p < 0.05 else "no")
+    strict["clear in YOLO counts?"] = strict.p.map(lambda p: "yes" if p < 0.05 else "no")
+    hand = pd.read_csv(EXPORT / "hand_count_images.csv").groupby("stratum")[["motorcycle", "person", "bus", "car"]].mean()
+    hand.columns = ["Motorcycles", "People", "Buses", "Cars"]
+    strict["hand count, dry → rain"] = strict["road user"].map(
+        lambda u: f"{hand.loc['dry day', u]:.1f} → {hand.loc['rain day', u]:.1f}")
     left, right = st.columns([3, 2])
     left.plotly_chart(px.bar(strict, x="road user", y="pct", error_y=100 * (strict.ci_high - strict.effect) / strict.dry_mean,
                              error_y_minus=100 * (strict.effect - strict.ci_low) / strict.dry_mean,
                              labels={"pct": "% change in count per image when raining"}), width="stretch")
-    right.dataframe(strict[["road user", "dry_mean", "effect", "change in rain", "p", "clear effect?"]], hide_index=True)
+    right.dataframe(strict[["road user", "change in rain", "p", "clear in YOLO counts?", "hand count, dry → rain"]],
+                    hide_index=True)
     right.caption(f"Rainy vs dry hours on the same day, daylight only (07–17), {effect['strict_rainy_hours']:,} rainy "
-                  f"camera-hours out of {effect['strict_n_obs']:,}. Rain = nearest BMA gauge ≥ 0.5 mm in the hour.")
+                  f"camera-hours out of {effect['strict_n_obs']:,}. Rain = nearest BMA gauge ≥ 0.5 mm in the hour. "
+                  "Last column: our own count per image, 40 dry and 24 rainy daylight images.")
     checks = effect["checks"]
     st.markdown("**Is it behaviour, or YOLO seeing less in the rain?** Two checks point to behaviour: the drop is "
                 "already there in light rain, which barely hurts visibility, and it lasts into the dry hour after "
-                "rain stops, when the camera sees clearly again.")
+                "rain stops, when the camera sees clearly again. These checks alone are not enough: people pass them "
+                "too, and the hand count below does not confirm a drop in people.")
     chk = pd.DataFrame(checks["by_road_user"]).T.reset_index(names="road user")
     for col in ("light_rain", "heavy_rain", "hour_after"):
         chk[col] = chk[f"{col}_pct"].map("{:+.0f}%".format) + chk[f"{col}_p"].map(lambda p: "" if p < 0.05 else " (not clear)")
@@ -79,7 +86,8 @@ with tab_insight:
     st.markdown("**What the hand count adds.** YOLO finds only about 1 motorcycle in 9, and fewer still in rain, so "
                 "the size of the motorcycle drop is overstated. The direction holds in our own count: 4.7 motorcycles "
                 "per image in dry daylight (40 images) against 2.8 in rain (24 images). The same count shows no drop "
-                "in people (0.53 against 0.50), so the pedestrian result is not confirmed.")
+                "in people (0.53 against 0.50), so the pedestrian result is not confirmed. Only the motorcycle "
+                "drop is supported by both YOLO and the hand count.")
 
     st.subheader("2. Weekends are quieter, Sunday most of all")
     by_day = light.groupby("weekday").pcu.mean().reindex(
@@ -91,17 +99,17 @@ with tab_insight:
     right.metric("Weekday vs weekend (daylight)", f"{wk:.1f} vs {we:.1f}", f"{100 * (we - wk) / wk:.0f}% on weekends")
     right.caption("One weekend only, so treat this as suggestive.")
 
-    st.subheader("3. Road type does not change how full the road looks, but secondary roads have far more motorcycles")
+    st.subheader("3. Road type does not change how full the road looks")
     roads = cams.groupby("road_class", as_index=False).agg(
         cameras=("camera_id", "size"), vehicles_in_view=("mean_pcu", "mean"),
-        motorcycle_share=("mean_motorcycle_share", "mean")).sort_values("vehicles_in_view", ascending=False)
+        motorcycle_share_yolo=("mean_motorcycle_share", "mean")).sort_values("vehicles_in_view", ascending=False)
     left, right = st.columns(2)
     left.dataframe(roads.round(2), hide_index=True)
-    right.dataframe(cams.nlargest(5, "mean_pcu")[["name", "road_class", "mean_pcu"]].round(1)
-                    .rename(columns={"name": "busiest cameras", "mean_pcu": "vehicles in view"}), hide_index=True)
-
-    st.caption("Primary, secondary and tertiary roads all show about 7.5 vehicles in view. Motorcycle share is the "
-               "difference: about 4% on primary roads against 14% on secondary roads.")
+    left.caption("Primary, secondary and tertiary roads all show about 7.5 vehicles in view.")
+    right.dataframe(pd.read_csv(EXPORT / "hand_count_by_road.csv"), hide_index=True)
+    right.caption("YOLO reports a motorcycle share of 4% on primary roads against 14% on secondary roads. That gap is "
+                  "not real: in our hand count the share is 26% against 28%. YOLO finds 1 motorcycle in 20 on the wide "
+                  "primary roads and 1 in 5 on secondary roads, so we do not claim a difference.")
 
     st.subheader("Limits")
     st.markdown("""
@@ -111,6 +119,7 @@ with tab_insight:
 - The vehicles-in-view score is therefore too low in level (about 60% of the hand count by day, 45% at night), but it ranks images well (correlation 0.85), so it is used for comparisons only.
 - YOLO labels pickups and vans as trucks (116 reported, 16 real), so its "truck" class is counted as a car.
 - Road type is the nearest street-level road in OpenStreetMap; expressways passing overhead are ignored.
+- How many motorcycles YOLO finds depends on the road (5% on primary, 19% on secondary), so YOLO motorcycle counts are compared within a camera, never between cameras.
 - Air quality and non-rain weather come from coarse model grids and are not used for conclusions.
 """)
     st.markdown("**Hand count against YOLO** (98 images: dry day, rain, night, and images where YOLO saw many trucks)")
@@ -120,17 +129,20 @@ with tab_insight:
 
 with tab_map:
     per_cam = sel.groupby("camera_id", as_index=False).agg(congestion=("congestion_z", "mean"), pcu=("pcu", "mean"))
-    m = cams.merge(per_cam, on="camera_id")
+    m = cams.merge(per_cam, on="camera_id").dropna(subset=["congestion"])  # cameras with no usable hour here
+    m["radius"] = 90 + 30 * m.pcu
     m["red"] = (255 * ((m.congestion.clip(-1, 1) + 1) / 2)).astype(int)
     m["green"] = 255 - m.red
     m["label"] = m.name + "<br/>congestion " + m.congestion.round(2).astype(str) + " · PCU " + m.pcu.round(1).astype(str)
     st.pydeck_chart(pdk.Deck(
         map_style=None,
         initial_view_state=pdk.ViewState(latitude=m.latitude.mean(), longitude=m.longitude.mean(), zoom=10.5),
-        layers=[pdk.Layer("ScatterplotLayer", m, get_position="[longitude, latitude]", get_radius=220,
+        layers=[pdk.Layer("ScatterplotLayer", m, get_position="[longitude, latitude]", get_radius="radius",
                           get_fill_color="[red, green, 60, 200]", pickable=True)],
         tooltip={"html": "{label}"}))
-    st.caption("Red = busier than that camera's normal for the selected filters, green = quieter.")
+    st.caption("Dot size = vehicles in view (it also depends on how much road the camera sees). Colour = red when "
+               "busier than that camera's own weekly normal, green when quieter. With every filter left on, the "
+               "colour is neutral by definition: narrow the days, hours or rain level to see where it changes.")
 
 with tab_time:
     order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -157,10 +169,13 @@ with tab_rain:
                                x="hour_of_day", y="congestion_z", color="cluster",
                                title="Camera groups (K-means on daily shape)"), width="stretch")
     right.dataframe(prof.drop_duplicates("camera_id").cluster.value_counts().rename("cameras"))
+    right.caption("Groups use the whole week and do not change with the filters.")
 
 with tab_cam:
-    name = st.selectbox("Camera", cams.sort_values("name").name)
-    cam = cams[cams.name == name].iloc[0]
+    names = cams.set_index("camera_id").name
+    cam_id = st.selectbox("Camera", cams.sort_values(["name", "camera_id"]).camera_id,
+                          format_func=lambda i: f"{names[i]} (camera {i})")
+    cam = cams[cams.camera_id == cam_id].iloc[0]
     one = sel[sel.camera_id == cam.camera_id].sort_values("hour")
     st.write(f"Road: **{cam.road_name or '—'}** ({cam.road_class or 'unknown'}) · "
              f"stations within 500 m: {cam.n_stations_500m} · schools: {cam.n_schools_500m} · malls: {cam.n_malls_500m}")
@@ -170,8 +185,9 @@ with tab_cam:
 with tab_quality:
     st.markdown("**Cleaning rules and how many rows each one touches**")
     st.dataframe(quality.drop(columns="step"), hide_index=True)
-    bad = cams.assign(unusable=cams.blank_share + cams.frozen_share).nlargest(20, "unusable")
-    st.plotly_chart(px.bar(bad, x="name", y=["blank_share", "frozen_share"],
+    bad = cams.assign(unusable=cams.blank_share + cams.frozen_share,
+                      camera=cams.name + " (" + cams.camera_id.astype(str) + ")").nlargest(20, "unusable")
+    st.plotly_chart(px.bar(bad, x="camera", y=["blank_share", "frozen_share"],
                            title="Share of blank and frozen frames (worst 20 cameras)"), width="stretch")
     cover = sel.groupby("hour", as_index=False).agg(images=("n_images", "sum"), valid=("n_valid", "sum"))
     st.plotly_chart(px.line(cover, x="hour", y=["images", "valid"], title="Images collected vs usable per hour"),

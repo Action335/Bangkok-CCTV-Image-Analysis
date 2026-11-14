@@ -81,6 +81,19 @@ def score() -> None:
     by_class.to_csv(EXPORT / "hand_count_by_class.csv", index=False)
     by_stratum.reset_index().to_csv(EXPORT / "hand_count_by_stratum.csv", index=False)
 
+    # Does the motorcycle share really differ by road type, or only YOLO's ability to see motorcycles?
+    roads = pd.read_parquet(EXPORT / "cameras.parquet")[["camera_id", "road_class"]]
+    tot = df[df.stratum != "night"].merge(roads, on="camera_id").groupby("road_class").agg(
+        images=("id", "size"), **{c: (c, "sum") for c in CLASSES[:4]}, **{f"n_{c}": (f"n_{c}", "sum") for c in CLASSES[:4]})
+    tot = tot[tot.images >= 10]  # too few images of the other road types to say anything
+    by_road = pd.DataFrame({
+        "images": tot.images,
+        "motorcycle_share_hand": (tot.motorcycle / tot[CLASSES[:4]].sum(axis=1)).round(2),
+        "motorcycle_share_yolo": (tot.n_motorcycle / tot[[f"n_{c}" for c in CLASSES[:4]]].sum(axis=1)).round(2),
+        "motorcycles_found_by_yolo": (tot.n_motorcycle / tot.motorcycle).round(2)})
+    print("\nMotorcycle share by road type, daylight images\n" + by_road.to_string())
+    by_road.reset_index().to_csv(EXPORT / "hand_count_by_road.csv", index=False)
+
 
 PAGE = """<!doctype html><meta charset="utf-8"><title>Hand count</title>
 <style>
