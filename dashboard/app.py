@@ -69,7 +69,7 @@ with tab_insight:
                     hide_index=True)
     right.caption(f"Rainy vs dry hours on the same day, daylight only (07–17), {effect['strict_rainy_hours']:,} rainy "
                   f"camera-hours out of {effect['strict_n_obs']:,}. Rain = nearest BMA gauge ≥ 0.5 mm in the hour. "
-                  "Last column: our own count per image, 40 dry and 24 rainy daylight images.")
+                  "Last column: our own count per image, 40 dry and 25 rainy daylight images.")
     checks = effect["checks"]
     st.markdown("**Is it behaviour, or YOLO seeing less in the rain?** Two checks point to behaviour: the drop is "
                 "already there in light rain, which barely hurts visibility, and it lasts into the dry hour after "
@@ -85,8 +85,8 @@ with tab_insight:
 
     st.markdown("**What the hand count adds.** YOLO finds only about 1 motorcycle in 9, and fewer still in rain, so "
                 "the size of the motorcycle drop is overstated. The direction holds in our own count: 4.7 motorcycles "
-                "per image in dry daylight (40 images) against 2.8 in rain (24 images). The same count shows no drop "
-                "in people (0.53 against 0.50), so the pedestrian result is not confirmed. Only the motorcycle "
+                "per image in dry daylight (40 images) against 2.7 in rain (25 images). The same count shows no drop "
+                "in people (0.52 against 0.48), so the pedestrian result is not confirmed. Only the motorcycle "
                 "drop is supported by both YOLO and the hand count.")
 
     st.subheader("2. Weekends are quieter, Sunday most of all")
@@ -116,14 +116,14 @@ with tab_insight:
 - One week of images (25–31 Aug 2026) with one weekend; almost all rain fell on Sat 29 – Mon 31 Aug.
 - The source images have gaps: Thursday 27 Aug has almost no usable images before 09:00 (219 images in three hours against about 600 per hour normally, most of them blank or stuck frames), and 21:00 has one frame per camera. Those hours are left empty.
 - A photo counts vehicles in view, not speed, so a jam and free-flowing traffic can look alike.
-- YOLO11m undercounts. Against our hand count of 98 images it found about 60% of the cars and 11% of the motorcycles: distant, blurry vehicles are missed, more so at night and in rain.
-- The vehicles-in-view score is therefore too low in level (about 60% of the hand count by day, 45% at night), but it ranks images well (correlation 0.85), so it is used for comparisons only.
+- YOLO11m undercounts. Against our hand count of 100 images it found about 60% of the cars and 11% of the motorcycles: distant, blurry vehicles are missed, more so at night and in rain.
+- The vehicles-in-view score is therefore too low in level (about 60% of the hand count by day, 45% at night), but it ranks images well (correlation 0.86), so it is used for comparisons only.
 - YOLO labels pickups and vans as trucks (116 reported, 16 real), so its "truck" class is counted as a car.
 - Road type is the nearest street-level road in OpenStreetMap; expressways passing overhead are ignored.
 - How many motorcycles YOLO finds depends on the road (5% on primary, 19% on secondary), so YOLO motorcycle counts are compared within a camera, never between cameras.
 - Air quality and non-rain weather come from coarse model grids and are not used for conclusions.
 """)
-    st.markdown("**Hand count against YOLO** (98 images: dry day, rain, night, and images where YOLO saw many trucks)")
+    st.markdown("**Hand count against YOLO** (100 images: dry day, rain, night, and images where YOLO saw many trucks)")
     left, right = st.columns(2)
     left.dataframe(pd.read_csv(EXPORT / "hand_count_by_class.csv"), hide_index=True)
     right.dataframe(pd.read_csv(EXPORT / "hand_count_by_stratum.csv"), hide_index=True)
