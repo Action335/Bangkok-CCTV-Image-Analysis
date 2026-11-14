@@ -13,7 +13,7 @@ st.set_page_config("Bangkok CCTV Traffic", layout="wide")
 
 
 @st.cache_data
-def load():
+def load(version: float):  # version = newest file time in export/, so new data replaces the cached copy
     hourly = pd.read_parquet(EXPORT / "camera_hour.parquet")
     cams = pd.read_parquet(EXPORT / "cameras.parquet").merge(
         pd.read_parquet(EXPORT / "camera_clusters.parquet"), on="camera_id", how="left")
@@ -22,7 +22,7 @@ def load():
             pd.read_parquet(EXPORT / "quality_report.parquet"))
 
 
-hourly, cams, effect, quality = load()
+hourly, cams, effect, quality = load(max(f.stat().st_mtime for f in EXPORT.iterdir()))
 
 st.title("Bangkok CCTV Traffic: where, when, and what rain does")
 st.caption("100 BMA cameras, 25–31 Aug 2026, one image every 10 min (06:00–21:00). Vehicles counted with "
