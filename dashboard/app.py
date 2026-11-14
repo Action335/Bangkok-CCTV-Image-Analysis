@@ -114,6 +114,7 @@ with tab_insight:
     st.subheader("Limits")
     st.markdown("""
 - One week of images (25–31 Aug 2026) with one weekend; almost all rain fell on Sat 29 – Mon 31 Aug.
+- The source images have gaps: Thursday 27 Aug has almost no usable images before 09:00 (219 images in three hours against about 600 per hour normally, most of them blank or stuck frames), and 21:00 has one frame per camera. Those hours are left empty.
 - A photo counts vehicles in view, not speed, so a jam and free-flowing traffic can look alike.
 - YOLO11m undercounts. Against our hand count of 98 images it found about 60% of the cars and 11% of the motorcycles: distant, blurry vehicles are missed, more so at night and in rain.
 - The vehicles-in-view score is therefore too low in level (about 60% of the hand count by day, 45% at night), but it ranks images well (correlation 0.85), so it is used for comparisons only.
@@ -149,6 +150,9 @@ with tab_time:
     heat = sel.pivot_table(index="weekday", columns="hour_of_day", values="congestion_z").reindex(order).dropna(how="all")
     st.plotly_chart(px.imshow(heat, color_continuous_scale="RdYlGn_r", aspect="auto", zmin=-1, zmax=1,
                               title="Congestion by weekday and hour"), width="stretch")
+    st.caption("Empty cells are gaps in the source images, not quiet roads. Thursday 27 Aug has almost no images "
+               "before 09:00 (the camera feed was down), and 21:00 has a single frame per camera. Hours with fewer "
+               "than 3 usable images per camera are left empty.")
     mix = sel.groupby("hour_of_day")[["n_car", "n_motorcycle", "n_bus", "n_person"]].mean().reset_index()
     st.plotly_chart(px.line(mix, x="hour_of_day", y=["n_car", "n_motorcycle", "n_bus", "n_person"],
                             title="Average count per image by hour"), width="stretch")
