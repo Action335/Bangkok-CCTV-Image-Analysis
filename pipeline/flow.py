@@ -5,6 +5,7 @@ output already exists; pass --force to redo them.
 """
 import sys
 
+import pyarrow.parquet as pq
 from prefect import flow, task
 
 from pipeline import analyze, detect, extract, scrape_bma_rain, scrape_osm, scrape_weather, transform
@@ -13,7 +14,8 @@ from pipeline.config import BRONZE
 
 @task
 def extract_images(force: bool):
-    if force or not (BRONZE / "image_index.parquet").exists():
+    index = BRONZE / "image_index.parquet"
+    if force or not index.exists() or "change_from_prev" not in pq.read_schema(index).names:
         extract.run()
 
 

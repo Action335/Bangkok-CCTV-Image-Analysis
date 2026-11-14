@@ -64,6 +64,17 @@ with tab_insight:
     right.dataframe(strict[["road user", "dry_mean", "effect", "change in rain", "p", "clear effect?"]], hide_index=True)
     right.caption(f"Rainy vs dry hours on the same day, daylight only (07–17), {effect['strict_rainy_hours']:,} rainy "
                   f"camera-hours out of {effect['strict_n_obs']:,}. Rain = nearest BMA gauge ≥ 0.5 mm in the hour.")
+    checks = effect["checks"]
+    st.markdown("**Is it behaviour, or YOLO seeing less in the rain?** Two checks point to behaviour: the drop is "
+                "already there in light rain, which barely hurts visibility, and it lasts into the dry hour after "
+                "rain stops, when the camera sees clearly again.")
+    chk = pd.DataFrame(checks["by_road_user"]).T.reset_index(names="road user")
+    for col in ("light_rain", "heavy_rain", "hour_after"):
+        chk[col] = chk[f"{col}_pct"].map("{:+.0f}%".format) + chk[f"{col}_p"].map(lambda p: "" if p < 0.05 else " (not clear)")
+    st.dataframe(chk[["road user", "light_rain", "heavy_rain", "hour_after"]].rename(columns={
+        "light_rain": f"light rain, 0.5–2.5 mm/h ({checks['n_light']} h)",
+        "heavy_rain": f"heavy rain, 2.5+ mm/h ({checks['n_heavy']} h)",
+        "hour_after": f"dry hour after rain ({checks['n_hour_after']} h)"}), hide_index=True)
 
     st.subheader("2. Weekends are quieter, Sunday most of all")
     by_day = light.groupby("weekday").pcu.mean().reindex(
@@ -75,7 +86,7 @@ with tab_insight:
     right.metric("Weekday vs weekend (daylight)", f"{wk:.1f} vs {we:.1f}", f"{100 * (we - wk) / wk:.0f}% on weekends")
     right.caption("One weekend only, so treat this as suggestive.")
 
-    st.subheader("3. Motorways and primary roads carry the most traffic; secondary roads have twice the motorcycle share")
+    st.subheader("3. Road type does not change how full the road looks, but secondary roads have far more motorcycles")
     roads = cams.groupby("road_class", as_index=False).agg(
         cameras=("camera_id", "size"), vehicles_in_view=("mean_pcu", "mean"),
         motorcycle_share=("mean_motorcycle_share", "mean")).sort_values("vehicles_in_view", ascending=False)
@@ -84,11 +95,16 @@ with tab_insight:
     right.dataframe(cams.nlargest(5, "mean_pcu")[["name", "road_class", "mean_pcu"]].round(1)
                     .rename(columns={"name": "busiest cameras", "mean_pcu": "vehicles in view"}), hide_index=True)
 
+    st.caption("Primary, secondary and tertiary roads all show about 9 vehicles in view. Motorcycle share is the "
+               "difference: about 4% on primary roads against 14% on secondary roads.")
+
     st.subheader("Limits")
     st.markdown("""
 - One week of images (25–31 Aug 2026) with one weekend; almost all rain fell on Sat 29 – Mon 31 Aug.
 - A photo counts vehicles in view, not speed, so a jam and free-flowing traffic can look alike.
-- YOLO11m misses distant vehicles, more so at night and in heavy rain, so part of the rain drop may be missed detections.
+- YOLO11m misses distant vehicles, more so at night and in heavy rain, so part of the heavy-rain drop may be missed detections.
+- Truck counts are the least reliable: pickups and some fixed objects are counted as trucks, and trucks weigh 2.5 in the vehicles-in-view score.
+- Road type is the nearest street-level road in OpenStreetMap; expressways passing overhead are ignored.
 - Air quality and non-rain weather come from coarse model grids and are not used for conclusions.
 """)
 

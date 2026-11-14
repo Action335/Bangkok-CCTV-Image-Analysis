@@ -64,6 +64,31 @@ def rain_effect(hourly: pd.DataFrame) -> dict:
                                 "pct": round(100 * fit.params["rain"] / dry_mean, 1)}
     out["strict_n_obs"] = len(light)
     out["strict_rainy_hours"] = int(light.rain.sum())
+
+    # Two checks that the drop is behaviour and not YOLO seeing less in rain:
+    # (a) light rain alone, which barely hurts visibility;
+    # (b) the dry hour right after rain stops, when visibility is back.
+    light["level"] = pd.cut(light.precipitation, [-1, 0.5, 2.5, 1e6], right=False, labels=["dry", "light", "heavy"])
+    light = light.sort_values(["camera_id", "hour"])
+    by_cam = light.groupby("camera_id")
+    light["after_rain"] = ((light.rain == 0) & (by_cam.precipitation.shift(1) >= 0.5)
+                           & (light.hour - by_cam.hour.shift(1) == pd.Timedelta(hours=1))).astype(int)
+    controls = "C(hour_of_day) * is_weekend + C(camera_id) + C(day)"
+    out["checks"] = {"n_light": int((light.level == "light").sum()), "n_heavy": int((light.level == "heavy").sum()),
+                     "n_hour_after": int(light.after_rain.sum()), "by_road_user": {}}
+    for col, label in ROAD_USERS.items():
+        by_level = _fit(f"{col} ~ level + {controls}", light)
+        lagged = _fit(f"{col} ~ rain + after_rain + {controls}", light)
+        dry = light.loc[light.level == "dry", col].mean()
+        fully_dry = light.loc[(light.rain == 0) & (light.after_rain == 0), col].mean()
+        out["checks"]["by_road_user"][label] = {
+            "light_rain_pct": round(100 * by_level.params["level[T.light]"] / dry, 1),
+            "light_rain_p": float(f"{by_level.pvalues['level[T.light]']:.3g}"),
+            "heavy_rain_pct": round(100 * by_level.params["level[T.heavy]"] / dry, 1),
+            "heavy_rain_p": float(f"{by_level.pvalues['level[T.heavy]']:.3g}"),
+            "hour_after_pct": round(100 * lagged.params["after_rain"] / fully_dry, 1),
+            "hour_after_p": float(f"{lagged.pvalues['after_rain']:.3g}"),
+        }
     return out
 
 

@@ -17,7 +17,7 @@ Open-Meteo weather + air quality, OpenStreetMap, BMA rain gauges ─┘         
 | Unzip, timestamps, hashes, pixel stats | `pipeline/extract.py` | `data/bronze/image_index.parquet` |
 | Vehicle counts (YOLO11m, COCO) | `pipeline/detect.py` | `data/bronze/yolo_counts.parquet` |
 | Weather (ERA5) + air quality (CAMS) via Open-Meteo | `pipeline/scrape_weather.py` | `weather.parquet`, `air_quality.parquet` |
-| Road class, lanes, nearby stations/schools/malls (OpenStreetMap Overpass) | `pipeline/scrape_osm.py` | `osm_context.parquet` |
+| Road class and lanes of the nearest street-level road (elevated and toll roads skipped), nearby stations/schools/malls (OpenStreetMap Overpass) | `pipeline/scrape_osm.py` | `osm_context.parquet` |
 | 5-minute rainfall from 125 BMA rain gauges (weather.bangkok.go.th/rain), nearest gauge per camera | `pipeline/scrape_bma_rain.py` | `bma_rain_stations.parquet`, `bma_rain_5min.parquet` |
 | DuckLake bronze → silver → gold | `pipeline/transform.py` | `data/lake/`, `export/*.parquet` |
 | K-means camera groups, rain regression | `pipeline/analyze.py` | `export/camera_clusters.parquet`, `export/rain_effect.json` |

@@ -54,7 +54,11 @@ def run() -> pd.DataFrame:
             time.sleep(1)
         if n % 10 == 0:
             print(f"{n}/{len(st)} gauges, {len(rows)} readings", flush=True)
+    if not rows:
+        raise RuntimeError("No rain readings parsed for any gauge: the BMA page layout may have changed")
     df = pd.DataFrame(rows).rename(columns={"site_timestamp": "ts"})
+    silent = sorted(set(st.rain_id) - set(df.rain_id))
+    print(f"{df.rain_id.nunique()} gauges returned data; none from gauge ids {silent}")
     df["ts"] = pd.to_datetime(df.ts)
     df.to_parquet(BRONZE / "bma_rain_5min.parquet", index=False)
     return df

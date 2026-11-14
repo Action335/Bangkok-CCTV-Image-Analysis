@@ -51,5 +51,44 @@
     }
   },
   "strict_n_obs": 7445,
-  "strict_rainy_hours": 800
+  "strict_rainy_hours": 800,
+  "checks": {
+    "n_light": 450,
+    "n_heavy": 350,
+    "n_hour_after": 189,
+    "by_road_user": {
+      "Motorcycles": {
+        "light_rain_pct": -22.1,
+        "light_rain_p": 3.35e-06,
+        "heavy_rain_pct": -41.5,
+        "heavy_rain_p": 7.42e-11,
+        "hour_after_pct": -18.6,
+        "hour_after_p": 0.00326
+      },
+      "People": {
+        "light_rain_pct": -14.3,
+        "light_rain_p": 1.76e-05,
+        "heavy_rain_pct": -24.8,
+        "heavy_rain_p": 5.71e-08,
+        "hour_after_pct": -13.6,
+        "hour_after_p": 0.0165
+      },
+      "Buses and trucks": {
+        "light_rain_pct": -5.5,
+        "light_rain_p": 0.098,
+        "heavy_rain_pct": -10.4,
+        "heavy_rain_p": 0.0103,
+        "hour_after_pct": -0.9,
+        "hour_after_p": 0.828
+      },
+      "Cars": {
+        "light_rain_pct": 1.4,
+        "light_rain_p": 0.489,
+        "heavy_rain_pct": -5.3,
+        "heavy_rain_p": 0.0227,
+        "hour_after_pct": -3.7,
+        "hour_after_p": 0.148
+      }
+    }
+  }
 }
