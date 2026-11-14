@@ -7,7 +7,7 @@ import sys
 
 from prefect import flow, task
 
-from pipeline import analyze, detect, extract, scrape_osm, scrape_weather, transform
+from pipeline import analyze, detect, extract, scrape_bma_rain, scrape_osm, scrape_weather, transform
 from pipeline.config import BRONZE
 
 
@@ -34,6 +34,12 @@ def scrape_osm_context(force: bool):
         scrape_osm.run()
 
 
+@task(retries=1, retry_delay_seconds=60)
+def scrape_rain_gauges(force: bool):
+    if force or not (BRONZE / "bma_rain_5min.parquet").exists():
+        scrape_bma_rain.run()
+
+
 @task
 def build_lakehouse():
     transform.run()
@@ -50,6 +56,7 @@ def pipeline(force: bool = False):
     detect_vehicles(force)
     scrape_weather_and_air()
     scrape_osm_context(force)
+    scrape_rain_gauges(force)
     build_lakehouse()
     run_analysis()
 

@@ -1,20 +1,20 @@
 {
   "n_obs": 10659,
-  "r2": 0.372,
+  "r2": 0.373,
   "effects": {
     "light rain": {
-      "coef": -0.011,
-      "ci_low": -0.037,
-      "ci_high": 0.015,
-      "p": 0.405,
-      "n_hours": 3076
+      "coef": -0.12,
+      "ci_low": -0.177,
+      "ci_high": -0.063,
+      "p": 3.98e-05,
+      "n_hours": 729
     },
     "heavy rain": {
-      "coef": -0.0,
-      "ci_low": -0.054,
-      "ci_high": 0.053,
-      "p": 0.992,
-      "n_hours": 534
+      "coef": -0.146,
+      "ci_low": -0.222,
+      "ci_high": -0.07,
+      "p": 0.000158,
+      "n_hours": 349
     }
   }
 }
